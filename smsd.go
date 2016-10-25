@@ -2,79 +2,71 @@ package main
 
 import (
 	"flag"
-	"fmt"
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
 	"syscall"
 )
 
-var laddr string
-var domain string
-var mta string
-var uid int
-var gid int
+var config_file string
+type MessageHandler func(Config, Route, Message) error
+var MessageHandlers map[string]MessageHandler
 
 func init() {
-	flag.StringVar(&laddr, "l", "127.0.0.1:8080", "listen port")
-	flag.StringVar(&mta, "m", "127.0.0.1:25", "mta")
-	flag.StringVar(&domain, "d", "example.org", "domain")
-	flag.IntVar(&uid, "u", 978, "user id")
-	flag.IntVar(&gid, "g", 978, "group id")
+	flag.StringVar(&config_file, "c", "", "Configuration File")
+	MessageHandlers = make(map[string]MessageHandler)
+	MessageHandlers["log"]  = Log
+	MessageHandlers["smtp"] = SendMail
+	MessageHandlers["aamt"] = AndrewsArnoldMt
+	MessageHandlers["aamo"] = AndrewsArnoldMo
 }
 
-type SmsHandler bool
-
-func (s SmsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	q := r.URL.Query()
-	from := q.Get("from")
-	to := q.Get("to")
-	msg := q.Get("message")
-
-	if from == "" || to == "" || msg == "" {
-		http.Error(w, "Bad Request", http.StatusBadRequest)
-		return
-	}
-
-	to = to + "@" + domain
-	from = from + "@" + domain
-	bmsg := []byte("To: " + to + "\r\n" +
-		"From:  " + from + "\r\n" +
-		"Subject: SMS Message\r\n" +
-		"Content-Type: text/plain\r\n" +
-		"\r\n" +
-		msg)
-
-	err := InsecureSendMail(mta, from, []string{to}, bmsg)
-	if err != nil {
-		log.Print(err)
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-		return
-	}
-
-	fmt.Fprintf(w, "OK")
-
-	return
+type Message struct {
+	Src string
+	Dst string
+	Msg string
 }
 
 func main() {
 	flag.Parse()
 
-	err := syscall.Setgid(gid)
+	if len(config_file) == 0 {
+		flag.Usage()
+		log.Fatal("config file is a required argument")
+	}
+
+	config_data, err := ioutil.ReadFile(config_file)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	err = syscall.Setuid(uid)
+	cfg, err := ParseConfig(config_data)
 	if err != nil {
 		log.Fatal(err)
+	}
+
+	if cfg.Server.Gid > 0 {
+		err := syscall.Setgid(cfg.Server.Gid)
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
+
+	if cfg.Server.Uid > 0 {
+		err = syscall.Setuid(cfg.Server.Uid)
+		if err != nil {
+			log.Fatal(err)
+		}
 	}
 
 	r := mux.NewRouter()
-	s := SmsHandler(true)
+	mt := SmsMtHandler(cfg)
+	mo := SmsMoHandler(cfg)
 
-	r.Handle("/", handlers.CombinedLoggingHandler(os.Stderr, s))
-	log.Fatal(http.ListenAndServe(laddr, r))
+	r.Handle("/mt", handlers.CombinedLoggingHandler(os.Stderr, mt))
+	r.Handle("/mo", handlers.CombinedLoggingHandler(os.Stderr, mo))
+	log.Fatal(http.ListenAndServe(cfg.Server.Listen, r))
 }

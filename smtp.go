@@ -5,7 +5,7 @@ import (
 	"net/smtp"
 )
 
-func InsecureSendMail(addr string, from string, to []string, msg []byte) error {
+func InsecureSendMail(domain string, addr string, from string, to []string, msg []byte) error {
 	c, err := smtp.Dial(addr)
 	if err != nil {
 		return err
@@ -41,4 +41,18 @@ func InsecureSendMail(addr string, from string, to []string, msg []byte) error {
 		return err
 	}
 	return c.Quit()
+}
+
+func SendMail(cfg Config, rt Route, m Message) (err error) {
+	to   := rt.Dst
+	from := m.Src + "@" + cfg.Server.Domain
+	bmsg := []byte("To: " + to + "\r\n" +
+		"From:  " + from + "\r\n" +
+		"Subject: SMS Message\r\n" +
+		"Content-Type: text/plain\r\n" +
+		"\r\n" +
+		m.Msg)
+
+	err = InsecureSendMail(cfg.Server.Domain, cfg.Server.Mta, from, []string{to}, bmsg)
+	return
 }
