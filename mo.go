@@ -23,13 +23,18 @@ type SmsMoHandler Config
  * number and takes the appropriate action(s).
  */
 func (cfg SmsMoHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	q := r.URL.Query()
+	err := r.ParseForm()
+	if err != nil {
+		log.Printf("MO SMS could not parse form")
+		http.Error(w, "Internal ServerError", http.StatusInternalServerError)
+	}
 
+	log.Printf("FORM: %v", r.Form)
 	m := Message{}
-	m.Src = q.Get("from")
-	m.Dst = q.Get("to")
-	m.Msg = q.Get("message")
-	key := q.Get("key")
+
+	m.Src = r.Form.Get("oa")
+	m.Dst = r.Form.Get("da")
+	m.Msg = r.Form.Get("ud")
 
 	if m.Src == "" || m.Dst == "" || m.Msg == "" {
 		http.Error(w, "Bad Request", http.StatusBadRequest)
@@ -70,11 +75,6 @@ func (cfg SmsMoHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			if !matched {
 				continue
 			}
-		}
-
-		if rt.Key != "" && rt.Key != key {
-			http.Error(w, "Not Found", http.StatusNotFound)
-			return
 		}
 
 		err := h(Config(cfg), rt, m)
