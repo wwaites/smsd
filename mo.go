@@ -9,13 +9,11 @@ import (
 
 type SmsMoHandler Config
 /*
- * Handle incoming message, from the outside world, to be terminated
- * on a mobile handset. HTTP request should be GET with the fields
- *   - from
- *   - to
- *   - msg
- *   - key
- * set. The numbers should be in international format with country
+ * Handle outgoing message from mobile handset to outside world
+ *   - oa
+ *   - da
+ *   - ud
+ * The numbers should be in international format with country
  * code and no dialling prefix. The message should be encoded in
  * unicode.
  *

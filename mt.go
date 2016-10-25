@@ -10,9 +10,9 @@ type SmsMtHandler Config
 /*
  * Handle incoming message, from the outside world, to be terminated
  * on a mobile handset. HTTP request should be GET with the fields
- *   - from
- *   - to
- *   - msg
+ *   - oa
+ *   - da
+ *   - ud
  * set. The numbers should be in international format with country
  * code and no dialling prefix. The message should be encoded in
  * unicode.
@@ -24,9 +24,9 @@ func (cfg SmsMtHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 
 	m := Message{}
-	m.Src = q.Get("from")
-	m.Dst = q.Get("to")
-	m.Msg = q.Get("message")
+	m.Src = q.Get("oa")
+	m.Dst = q.Get("da")
+	m.Msg = q.Get("ud")
 
 	if m.Src == "" || m.Dst == "" || m.Msg == "" {
 		http.Error(w, "Bad Request", http.StatusBadRequest)
