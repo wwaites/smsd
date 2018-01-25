@@ -21,7 +21,7 @@ func init() {
 	MessageHandlers["log"]  = Log
 	MessageHandlers["smtp"] = SendMail
 	MessageHandlers["aamt"] = AndrewsArnoldMt
-	MessageHandlers["pushover"] Pushover
+	MessageHandlers["pushover"] = Pushover
 	MessageHandlers["aamo"] = AndrewsArnoldMo
 }
 
