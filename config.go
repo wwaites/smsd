@@ -18,6 +18,7 @@ type Config struct {
 	Server struct {
 		Listen string
 		Domain string
+		Pushover string
 		Mta string
 		Uid int
 		Gid int
